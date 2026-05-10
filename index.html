@@ -1,7 +1,8 @@
+<script>
+
 function render() {
   const list = document.getElementById("list");
 
-  // エリア順 → 店名順
   data.sort((a, b) => {
     if (a.area !== b.area) {
       return a.area.localeCompare(b.area, 'ja');
@@ -14,8 +15,6 @@ function render() {
   let currentArea = "";
 
   data.forEach(d => {
-
-    // エリア見出し
     if (d.area !== currentArea) {
       currentArea = d.area;
       const h = document.createElement("h3");
@@ -34,3 +33,5 @@ function render() {
     list.appendChild(div);
   });
 }
+
+</script>
