@@ -11,6 +11,7 @@ h1 { text-align:center; color:#1DA1F2;}
 input, select { width:100%; padding:12px; margin:5px 0;}
 button { padding:10px; margin:5px 5px 0 0;}
 .card { background:white; margin:10px 0; padding:12px; border-radius:10px;}
+.done { opacity:0.5; }
 </style>
 </head>
 
@@ -18,7 +19,6 @@ button { padding:10px; margin:5px 5px 0 0;}
 
 <h1>グルメ共有</h1>
 
-<!-- フィルター -->
 <select id="areaFilter" onchange="render()">
   <option value="">すべてのエリア</option>
 </select>
@@ -34,7 +34,6 @@ button { padding:10px; margin:5px 5px 0 0;}
 
 <hr>
 
-<!-- 入力 -->
 <input id="name" placeholder="店名">
 <input id="area" placeholder="エリア">
 
@@ -54,44 +53,40 @@ button { padding:10px; margin:5px 5px 0 0;}
 
 <div id="list"></div>
 
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js"></script>
+
 <script>
 
-let data = JSON.parse(localStorage.getItem("gmap") || "[]");
+// ★ここにあとでFirebase設定を入れる
 
-function save() {
-  localStorage.setItem("gmap", JSON.stringify(data));
-}
+let db;
+let data = [];
 
-// ★エリアプルダウン生成
-function updateFilters() {
-  const areaSet = new Set(data.map(d => d.area).filter(Boolean));
-  const areaFilter = document.getElementById("areaFilter");
+// 初期化後に呼ぶ
+function startApp(database) {
+  db = database;
 
-  areaFilter.innerHTML = '<option value="">すべてのエリア</option>';
-
-  Array.from(areaSet).sort((a,b)=>a.localeCompare(b,'ja')).forEach(a => {
-    const opt = document.createElement("option");
-    opt.value = a;
-    opt.textContent = a;
-    areaFilter.appendChild(opt);
+  // リアルタイム取得
+  db.collection("shops").onSnapshot(snapshot => {
+    data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    updateFilters();
+    render();
   });
 }
 
+// 追加
 function add() {
-  const item = {
-    id: Date.now(),
+  if (!name.value || !map.value) return;
+
+  db.collection("shops").add({
     name: name.value,
     area: area.value,
     genre: genre.value,
-    map: map.value
-  };
-
-  if (!item.name || !item.map) return;
-
-  data.push(item);
-  save();
-  updateFilters();
-  render();
+    map: map.value,
+    done: false
+  });
 
   name.value = "";
   area.value = "";
@@ -99,40 +94,77 @@ function add() {
   map.value = "";
 }
 
+// 行ったチェック
+function toggleDone(id, current) {
+  db.collection("shops").doc(id).update({
+    done: !current
+  });
+}
+
+// 編集
+function editItem(id) {
+  const item = data.find(d => d.id === id);
+
+  const n = prompt("店名", item.name);
+  const a = prompt("エリア", item.area);
+  const g = prompt("ジャンル", item.genre);
+  const m = prompt("URL", item.map);
+
+  db.collection("shops").doc(id).update({
+    name: n,
+    area: a,
+    genre: g,
+    map: m
+  });
+}
+
+// 削除
+function deleteItem(id) {
+  if (!confirm("削除しますか？")) return;
+  db.collection("shops").doc(id).delete();
+}
+
+// フィルター生成
+function updateFilters() {
+  const set = new Set(data.map(d => d.area).filter(Boolean));
+  areaFilter.innerHTML = '<option value="">すべて</option>';
+
+  Array.from(set).sort().forEach(a => {
+    areaFilter.innerHTML += `<option>${a}</option>`;
+  });
+}
+
+// 表示
 function render() {
-  const list = document.getElementById("list");
+  const areaF = areaFilter.value;
+  const genreF = genreFilter.value;
 
-  const areaF = document.getElementById("areaFilter").value;
-  const genreF = document.getElementById("genreFilter").value;
+  let filtered = data.filter(d =>
+    (!areaF || d.area === areaF) &&
+    (!genreF || d.genre === genreF)
+  );
 
-  // ★フィルター
-  let filtered = data.filter(d => {
-    return (!areaF || d.area === areaF) &&
-           (!genreF || d.genre === genreF);
-  });
-
-  // ソート
-  filtered.sort((a, b) => {
-    if (a.area !== b.area) return a.area.localeCompare(b.area,'ja');
-    return a.name.localeCompare(b.name,'ja');
-  });
+  filtered.sort((a,b)=>a.area.localeCompare(b.area,'ja'));
 
   list.innerHTML = "";
 
   filtered.forEach(d => {
     list.innerHTML += `
-      <div class="card">
+      <div class="card ${d.done ? 'done':''}">
         <b>${d.name}</b><br>
         ${d.area} / ${d.genre}<br>
-        <a href="${d.map}" target="_blank">地図</a>
+        <a href="${d.map}" target="_blank">地図</a><br><br>
+
+        <button onclick="toggleDone('${d.id}', ${d.done})">
+          ${d.done ? '行った✓' : '行く'}
+        </button>
+
+        <button onclick="editItem('${d.id}')">編集</button>
+        <button onclick="deleteItem('${d.id}')">削除</button>
       </div>
     `;
   });
 }
-
-// 初期化
-updateFilters();
-render();
 
 </script>
 
