@@ -26,14 +26,12 @@ input {
 }
 
 button {
-  width: 100%;
-  padding: 14px;
-  margin-top: 5px;
+  padding: 10px;
+  margin: 5px 5px 5px 0;
+  border: none;
+  border-radius: 8px;
   background: #1DA1F2;
   color: white;
-  border: none;
-  border-radius: 10px;
-  font-size: 16px;
 }
 
 .card {
@@ -47,11 +45,6 @@ button {
   font-size: 12px;
   color: gray;
 }
-
-h3 {
-  margin-top: 20px;
-  color: #333;
-}
 </style>
 </head>
 
@@ -59,17 +52,13 @@ h3 {
 
 <h1>グルメ共有</h1>
 
-<!-- 入力 -->
 <input id="name" placeholder="店名">
-<input id="area" placeholder="エリア（例：渋谷）">
+<input id="area" placeholder="エリア">
 <input id="map" placeholder="GoogleマップURL">
-
-<button onclick="openMap()">地図で確認</button>
 <button onclick="add()">追加</button>
 
 <hr>
 
-<!-- 一覧 -->
 <div id="list"></div>
 
 <script>
@@ -78,12 +67,6 @@ let data = JSON.parse(localStorage.getItem("gmap") || "[]");
 
 function save() {
   localStorage.setItem("gmap", JSON.stringify(data));
-}
-
-function openMap() {
-  const url = document.getElementById("map").value;
-  if (!url) return;
-  window.open(url, "_blank");
 }
 
 function add() {
@@ -104,10 +87,31 @@ function add() {
   document.getElementById("map").value = "";
 }
 
+function editItem(i) {
+  const item = data[i];
+
+  const newName = prompt("店名を編集", item.name);
+  const newArea = prompt("エリアを編集", item.area);
+  const newMap = prompt("URLを編集", item.map);
+
+  if (newName) item.name = newName;
+  if (newArea) item.area = newArea;
+  if (newMap) item.map = newMap;
+
+  save();
+  render();
+}
+
+function deleteItem(i) {
+  if (!confirm("削除しますか？")) return;
+  data.splice(i, 1);
+  save();
+  render();
+}
+
 function render() {
   const list = document.getElementById("list");
 
-  // エリア → 店名でソート
   data.sort((a, b) => {
     if (a.area !== b.area) {
       return a.area.localeCompare(b.area, 'ja');
@@ -119,12 +123,10 @@ function render() {
 
   let currentArea = "";
 
-  data.forEach(d => {
+  data.forEach((d, i) => {
 
-    // エリア見出し
     if (d.area !== currentArea) {
       currentArea = d.area;
-
       const h = document.createElement("h3");
       h.textContent = currentArea || "未設定";
       list.appendChild(h);
@@ -135,8 +137,11 @@ function render() {
 
     div.innerHTML = `
       <b>${d.name}</b><br>
-      <span class="area">${d.area || "未設定"}</span><br>
-      <a href="${d.map}" target="_blank">地図で見る</a>
+      <span class="area">${d.area}</span><br>
+      <a href="${d.map}" target="_blank">地図で見る</a><br><br>
+
+      <button onclick="editItem(${i})">編集</button>
+      <button onclick="deleteItem(${i})">削除</button>
     `;
 
     list.appendChild(div);
