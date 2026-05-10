@@ -9,7 +9,6 @@
 body {
   font-family: sans-serif;
   background: #f5f8fa;
-  margin: 0;
   padding: 10px;
 }
 
@@ -18,7 +17,7 @@ h1 {
   color: #1DA1F2;
 }
 
-input {
+input, select {
   width: 100%;
   padding: 12px;
   margin: 5px 0;
@@ -26,12 +25,13 @@ input {
 }
 
 button {
-  padding: 10px;
-  margin: 5px 5px 5px 0;
-  border: none;
-  border-radius: 8px;
+  width: 100%;
+  padding: 14px;
+  margin-top: 5px;
   background: #1DA1F2;
   color: white;
+  border: none;
+  border-radius: 10px;
 }
 
 .card {
@@ -45,6 +45,11 @@ button {
   font-size: 12px;
   color: gray;
 }
+
+.genre {
+  font-size: 12px;
+  color: #555;
+}
 </style>
 </head>
 
@@ -54,7 +59,18 @@ button {
 
 <input id="name" placeholder="店名">
 <input id="area" placeholder="エリア">
+
+<select id="genre">
+  <option value="">ジャンル選択</option>
+  <option>和食</option>
+  <option>洋食</option>
+  <option>中華</option>
+  <option>スイーツ</option>
+  <option>その他</option>
+</select>
+
 <input id="map" placeholder="GoogleマップURL">
+
 <button onclick="add()">追加</button>
 
 <hr>
@@ -73,6 +89,7 @@ function add() {
   const item = {
     name: document.getElementById("name").value,
     area: document.getElementById("area").value,
+    genre: document.getElementById("genre").value,
     map: document.getElementById("map").value
   };
 
@@ -84,52 +101,44 @@ function add() {
 
   document.getElementById("name").value = "";
   document.getElementById("area").value = "";
+  document.getElementById("genre").value = "";
   document.getElementById("map").value = "";
-}
-
-function editItem(i) {
-  const item = data[i];
-
-  const newName = prompt("店名を編集", item.name);
-  const newArea = prompt("エリアを編集", item.area);
-  const newMap = prompt("URLを編集", item.map);
-
-  if (newName) item.name = newName;
-  if (newArea) item.area = newArea;
-  if (newMap) item.map = newMap;
-
-  save();
-  render();
-}
-
-function deleteItem(i) {
-  if (!confirm("削除しますか？")) return;
-  data.splice(i, 1);
-  save();
-  render();
 }
 
 function render() {
   const list = document.getElementById("list");
 
+  // ★ここが重要：エリア → ジャンル → 店名でソート
   data.sort((a, b) => {
-    if (a.area !== b.area) {
-      return a.area.localeCompare(b.area, 'ja');
-    }
+    if (a.area !== b.area) return a.area.localeCompare(b.area, 'ja');
+    if (a.genre !== b.genre) return a.genre.localeCompare(b.genre, 'ja');
     return a.name.localeCompare(b.name, 'ja');
   });
 
   list.innerHTML = "";
 
   let currentArea = "";
+  let currentGenre = "";
 
   data.forEach((d, i) => {
 
+    // エリア見出し
     if (d.area !== currentArea) {
       currentArea = d.area;
-      const h = document.createElement("h3");
+      currentGenre = "";
+
+      const h = document.createElement("h2");
       h.textContent = currentArea || "未設定";
       list.appendChild(h);
+    }
+
+    // ジャンル見出し
+    if (d.genre !== currentGenre) {
+      currentGenre = d.genre;
+
+      const g = document.createElement("h4");
+      g.textContent = currentGenre || "未分類";
+      list.appendChild(g);
     }
 
     const div = document.createElement("div");
@@ -138,10 +147,8 @@ function render() {
     div.innerHTML = `
       <b>${d.name}</b><br>
       <span class="area">${d.area}</span><br>
-      <a href="${d.map}" target="_blank">地図で見る</a><br><br>
-
-      <button onclick="editItem(${i})">編集</button>
-      <button onclick="deleteItem(${i})">削除</button>
+      <span class="genre">${d.genre}</span><br>
+      <a href="${d.map}" target="_blank">地図で見る</a>
     `;
 
     list.appendChild(div);
