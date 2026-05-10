@@ -1,4 +1,8 @@
+<div id="list"></div>
+
 <script>
+
+let data = JSON.parse(localStorage.getItem("gmap") || "[]");
 
 function render() {
   const list = document.getElementById("list");
@@ -23,8 +27,6 @@ function render() {
     }
 
     const div = document.createElement("div");
-    div.className = "card";
-
     div.innerHTML = `
       <b>${d.name}</b><br>
       <a href="${d.map}" target="_blank">地図で見る</a>
@@ -33,5 +35,7 @@ function render() {
     list.appendChild(div);
   });
 }
+
+render();
 
 </script>
