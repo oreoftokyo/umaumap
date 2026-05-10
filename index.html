@@ -6,50 +6,11 @@
 <title>グルメ共有</title>
 
 <style>
-body {
-  font-family: sans-serif;
-  background: #f5f8fa;
-  padding: 10px;
-}
-
-h1 {
-  text-align: center;
-  color: #1DA1F2;
-}
-
-input, select {
-  width: 100%;
-  padding: 12px;
-  margin: 5px 0;
-  font-size: 16px;
-}
-
-button {
-  width: 100%;
-  padding: 14px;
-  margin-top: 5px;
-  background: #1DA1F2;
-  color: white;
-  border: none;
-  border-radius: 10px;
-}
-
-.card {
-  background: white;
-  margin: 10px 0;
-  padding: 12px;
-  border-radius: 12px;
-}
-
-.area {
-  font-size: 12px;
-  color: gray;
-}
-
-.genre {
-  font-size: 12px;
-  color: #555;
-}
+body { font-family: sans-serif; background:#f5f8fa; padding:10px;}
+h1 { text-align:center; color:#1DA1F2;}
+input, select { width:100%; padding:12px; margin:5px 0;}
+button { padding:10px; margin:5px 5px 0 0;}
+.card { background:white; margin:10px 0; padding:12px; border-radius:10px;}
 </style>
 </head>
 
@@ -57,11 +18,28 @@ button {
 
 <h1>グルメ共有</h1>
 
+<!-- フィルター -->
+<select id="areaFilter" onchange="render()">
+  <option value="">すべてのエリア</option>
+</select>
+
+<select id="genreFilter" onchange="render()">
+  <option value="">すべてのジャンル</option>
+  <option>和食</option>
+  <option>洋食</option>
+  <option>中華</option>
+  <option>スイーツ</option>
+  <option>その他</option>
+</select>
+
+<hr>
+
+<!-- 入力 -->
 <input id="name" placeholder="店名">
 <input id="area" placeholder="エリア">
 
 <select id="genre">
-  <option value="">ジャンル選択</option>
+  <option value="">ジャンル</option>
   <option>和食</option>
   <option>洋食</option>
   <option>中華</option>
@@ -70,7 +48,6 @@ button {
 </select>
 
 <input id="map" placeholder="GoogleマップURL">
-
 <button onclick="add()">追加</button>
 
 <hr>
@@ -85,76 +62,76 @@ function save() {
   localStorage.setItem("gmap", JSON.stringify(data));
 }
 
+// ★エリアプルダウン生成
+function updateFilters() {
+  const areaSet = new Set(data.map(d => d.area).filter(Boolean));
+  const areaFilter = document.getElementById("areaFilter");
+
+  areaFilter.innerHTML = '<option value="">すべてのエリア</option>';
+
+  Array.from(areaSet).sort((a,b)=>a.localeCompare(b,'ja')).forEach(a => {
+    const opt = document.createElement("option");
+    opt.value = a;
+    opt.textContent = a;
+    areaFilter.appendChild(opt);
+  });
+}
+
 function add() {
   const item = {
-    name: document.getElementById("name").value,
-    area: document.getElementById("area").value,
-    genre: document.getElementById("genre").value,
-    map: document.getElementById("map").value
+    id: Date.now(),
+    name: name.value,
+    area: area.value,
+    genre: genre.value,
+    map: map.value
   };
 
   if (!item.name || !item.map) return;
 
   data.push(item);
   save();
+  updateFilters();
   render();
 
-  document.getElementById("name").value = "";
-  document.getElementById("area").value = "";
-  document.getElementById("genre").value = "";
-  document.getElementById("map").value = "";
+  name.value = "";
+  area.value = "";
+  genre.value = "";
+  map.value = "";
 }
 
 function render() {
   const list = document.getElementById("list");
 
-  // ★ここが重要：エリア → ジャンル → 店名でソート
-  data.sort((a, b) => {
-    if (a.area !== b.area) return a.area.localeCompare(b.area, 'ja');
-    if (a.genre !== b.genre) return a.genre.localeCompare(b.genre, 'ja');
-    return a.name.localeCompare(b.name, 'ja');
+  const areaF = document.getElementById("areaFilter").value;
+  const genreF = document.getElementById("genreFilter").value;
+
+  // ★フィルター
+  let filtered = data.filter(d => {
+    return (!areaF || d.area === areaF) &&
+           (!genreF || d.genre === genreF);
+  });
+
+  // ソート
+  filtered.sort((a, b) => {
+    if (a.area !== b.area) return a.area.localeCompare(b.area,'ja');
+    return a.name.localeCompare(b.name,'ja');
   });
 
   list.innerHTML = "";
 
-  let currentArea = "";
-  let currentGenre = "";
-
-  data.forEach((d, i) => {
-
-    // エリア見出し
-    if (d.area !== currentArea) {
-      currentArea = d.area;
-      currentGenre = "";
-
-      const h = document.createElement("h2");
-      h.textContent = currentArea || "未設定";
-      list.appendChild(h);
-    }
-
-    // ジャンル見出し
-    if (d.genre !== currentGenre) {
-      currentGenre = d.genre;
-
-      const g = document.createElement("h4");
-      g.textContent = currentGenre || "未分類";
-      list.appendChild(g);
-    }
-
-    const div = document.createElement("div");
-    div.className = "card";
-
-    div.innerHTML = `
-      <b>${d.name}</b><br>
-      <span class="area">${d.area}</span><br>
-      <span class="genre">${d.genre}</span><br>
-      <a href="${d.map}" target="_blank">地図で見る</a>
+  filtered.forEach(d => {
+    list.innerHTML += `
+      <div class="card">
+        <b>${d.name}</b><br>
+        ${d.area} / ${d.genre}<br>
+        <a href="${d.map}" target="_blank">地図</a>
+      </div>
     `;
-
-    list.appendChild(div);
   });
 }
 
+// 初期化
+updateFilters();
 render();
 
 </script>
