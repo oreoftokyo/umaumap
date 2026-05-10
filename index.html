@@ -6,12 +6,35 @@
 <title>グルメ共有</title>
 
 <style>
-body { font-family:sans-serif; background:#f5f8fa; padding:10px;}
-h1 { text-align:center; color:#1DA1F2;}
-input, select { width:100%; padding:12px; margin:5px 0; font-size:16px;}
-button { padding:10px; margin:5px 5px 0 0; border:none; border-radius:8px; background:#1DA1F2; color:white;}
-.card { background:white; margin:10px 0; padding:12px; border-radius:10px;}
+body { font-family: sans-serif; background:#f5f8fa; padding:10px; }
+h1 { text-align:center; color:#1DA1F2; }
+
+input, select {
+  width:100%;
+  padding:12px;
+  margin:5px 0;
+  font-size:16px;
+}
+
+button {
+  padding:10px;
+  margin:5px 5px 0 0;
+  border:none;
+  border-radius:8px;
+  background:#1DA1F2;
+  color:white;
+  cursor:pointer;
+}
+
+.card {
+  background:white;
+  margin:10px 0;
+  padding:12px;
+  border-radius:10px;
+}
+
 .done { opacity:0.5; }
+a { color:#1DA1F2; }
 </style>
 </head>
 
@@ -35,7 +58,7 @@ button { padding:10px; margin:5px 5px 0 0; border:none; border-radius:8px; backg
 
 <hr>
 
-<!-- 入力フォーム -->
+<!-- 入力 -->
 <input id="name" placeholder="店名">
 <input id="area" placeholder="エリア">
 
@@ -56,94 +79,127 @@ button { padding:10px; margin:5px 5px 0 0; border:none; border-radius:8px; backg
 
 <div id="list"></div>
 
-<script>
+<!-- Firebase -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  getDocs,
+  deleteDoc,
+  doc,
+  updateDoc
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-let data = JSON.parse(localStorage.getItem("gmap") || "[]");
+// ===== Firebase設定 =====
+const firebaseConfig = {
+  apiKey: "AIzaSyBIy1VgLDZ9ZJR3LJpHTbmRW8wzIyqz_0",
+  authDomain: "my-gourmet-app-677a8.firebaseapp.com",
+  projectId: "my-gourmet-app-677a8",
+  storageBucket: "my-gourmet-app-677a8.firebasestorage.app",
+  messagingSenderId: "322555695182",
+  appId: "1:322555695182:web:effc9c3999e3cdbfa1b31f",
+  measurementId: "G-59D8F0HR21"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const col = collection(db, "gourmet");
+
+// ===== 状態 =====
+let data = [];
 let editId = null;
 
-function save() {
-  localStorage.setItem("gmap", JSON.stringify(data));
+// ===== DOM =====
+const nameEl = document.getElementById("name");
+const areaEl = document.getElementById("area");
+const genreEl = document.getElementById("genre");
+const mapEl = document.getElementById("map");
+const listEl = document.getElementById("list");
+const mainBtn = document.getElementById("mainBtn");
+
+const areaFilter = document.getElementById("areaFilter");
+const genreFilter = document.getElementById("genreFilter");
+
+// ===== データ取得 =====
+async function loadData() {
+  const snap = await getDocs(col);
+  data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  updateFilters();
+  render();
 }
 
-// フィルター更新
+// ===== フィルター更新 =====
 function updateFilters() {
   const set = new Set(data.map(d => d.area).filter(Boolean));
-  areaFilter.innerHTML = '<option value="">すべてのエリア</option>';
 
-  Array.from(set).sort((a,b)=>a.localeCompare(b,'ja')).forEach(a=>{
+  areaFilter.innerHTML = '<option value="">すべてのエリア</option>';
+  [...set].sort((a,b)=>a.localeCompare(b,'ja')).forEach(a=>{
     areaFilter.innerHTML += `<option>${a}</option>`;
   });
 }
 
-// 追加＆更新
-function add() {
-
-  if (!name.value || !map.value) return;
+// ===== 追加・更新 =====
+async function add() {
+  if (!nameEl.value || !mapEl.value) return;
 
   if (editId) {
-    const item = data.find(d => d.id === editId);
-    item.name = name.value;
-    item.area = area.value;
-    item.genre = genre.value;
-    item.map = map.value;
+    await updateDoc(doc(db, "gourmet", editId), {
+      name: nameEl.value,
+      area: areaEl.value,
+      genre: genreEl.value,
+      map: mapEl.value
+    });
     editId = null;
   } else {
-    data.push({
-      id: Date.now(),
-      name: name.value,
-      area: area.value,
-      genre: genre.value,
-      map: map.value,
-      done:false
+    await addDoc(col, {
+      name: nameEl.value,
+      area: areaEl.value,
+      genre: genreEl.value,
+      map: mapEl.value,
+      done: false,
+      createdAt: Date.now()
     });
   }
 
-  save();
-  updateFilters();
-  render();
-
-  name.value = "";
-  area.value = "";
-  genre.value = "";
-  map.value = "";
-
-  mainBtn.textContent = "追加";
+  clearForm();
+  loadData();
 }
 
-// 編集（フォームに入れる）
+// ===== 削除 =====
+async function deleteItem(id) {
+  if (!confirm("削除しますか？")) return;
+  await deleteDoc(doc(db, "gourmet", id));
+  loadData();
+}
+
+// ===== 編集 =====
 function editItem(id) {
   const item = data.find(d => d.id === id);
 
-  name.value = item.name;
-  area.value = item.area;
-  genre.value = item.genre;
-  map.value = item.map;
+  nameEl.value = item.name;
+  areaEl.value = item.area;
+  genreEl.value = item.genre;
+  mapEl.value = item.map;
 
   editId = id;
   mainBtn.textContent = "更新";
 }
 
-// 削除
-function deleteItem(id) {
-  if (!confirm("削除しますか？")) return;
-
-  data = data.filter(d => d.id !== id);
-  save();
-  updateFilters();
-  render();
-}
-
-// 行ったチェック
-function toggleDone(id) {
+// ===== 行ったチェック =====
+async function toggleDone(id) {
   const item = data.find(d => d.id === id);
-  item.done = !item.done;
-  save();
-  render();
+
+  await updateDoc(doc(db, "gourmet", id), {
+    done: !item.done
+  });
+
+  loadData();
 }
 
-// 表示
+// ===== 表示 =====
 function render() {
-
   const areaF = areaFilter.value;
   const genreF = genreFilter.value;
 
@@ -157,21 +213,21 @@ function render() {
     return a.name.localeCompare(b.name,'ja');
   });
 
-  list.innerHTML = "";
+  listEl.innerHTML = "";
 
   filtered.forEach(d=>{
-    list.innerHTML += `
+    listEl.innerHTML += `
       <div class="card ${d.done ? 'done':''}">
         <b>${d.name}</b><br>
-        ${d.area} / ${d.genre}<br>
+        ${d.area || ""} / ${d.genre || ""}<br>
         <a href="${d.map}" target="_blank">地図</a><br><br>
 
-        <button onclick="toggleDone(${d.id})">
+        <button onclick="toggleDone('${d.id}')">
           ${d.done ? '行った✓' : '行く'}
         </button>
 
-        <button onclick="editItem(${d.id})">編集</button>
-        <button onclick="deleteItem(${d.id})">削除</button>
+        <button onclick="editItem('${d.id}')">編集</button>
+        <button onclick="deleteItem('${d.id}')">削除</button>
       </div>
     `;
   });
@@ -179,9 +235,23 @@ function render() {
   mainBtn.textContent = editId ? "更新" : "追加";
 }
 
-// 初期化
-updateFilters();
-render();
+// ===== フォームクリア =====
+function clearForm() {
+  nameEl.value = "";
+  areaEl.value = "";
+  genreEl.value = "";
+  mapEl.value = "";
+}
+
+// ===== グローバル公開（重要）=====
+window.add = add;
+window.deleteItem = deleteItem;
+window.editItem = editItem;
+window.toggleDone = toggleDone;
+window.render = render;
+
+// ===== 初期化 =====
+loadData();
 
 </script>
 
