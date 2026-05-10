@@ -1,154 +1,36 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>グルメマイマップ</title>
-
-<style>
-body {
-  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-  background: #f5f8fa;
-  margin: 0;
-  padding: 10px;
-}
-
-h1 {
-  text-align: center;
-  color: #1DA1F2;
-}
-
-input, textarea {
-  width: 100%;
-  margin: 5px 0;
-  padding: 12px;
-  font-size: 16px;
-}
-
-button {
-  padding: 12px;
-  font-size: 16px;
-  border: none;
-  border-radius: 8px;
-  margin: 5px 5px 5px 0;
-  min-height: 44px;
-}
-
-.add-btn {
-  background: #1DA1F2;
-  color: white;
-  width: 100%;
-}
-
-.card {
-  background: white;
-  padding: 12px;
-  margin: 10px 0;
-  border-radius: 10px;
-}
-
-.done {
-  opacity: 0.5;
-}
-
-.actions button {
-  font-size: 14px;
-  padding: 8px;
-}
-
-.link {
-  color: #1DA1F2;
-  text-decoration: underline;
-}
-</style>
-</head>
-
-<body>
-
-<h1>グルメマイマップ</h1>
-
-<input id="name" placeholder="店名">
-<input id="area" placeholder="エリア（例：渋谷）">
-<input id="url" placeholder="XのURL">
-<textarea id="memo" placeholder="メモ"></textarea>
-<button class="add-btn" onclick="add()">追加</button>
-
-<div id="list"></div>
-
-<script>
-let data = JSON.parse(localStorage.getItem("gourmet") || "[]");
-
-function save() {
-  localStorage.setItem("gourmet", JSON.stringify(data));
-}
-
-function add() {
-  const item = {
-    name: document.getElementById("name").value,
-    area: document.getElementById("area").value,
-    url: document.getElementById("url").value,
-    memo: document.getElementById("memo").value,
-    done: false
-  };
-
-  if (!item.name) return;
-
-  data.push(item);
-  save();
-  render();
-
-  document.getElementById("name").value = "";
-  document.getElementById("area").value = "";
-  document.getElementById("url").value = "";
-  document.getElementById("memo").value = "";
-}
-
-function toggle(i) {
-  data[i].done = !data[i].done;
-  save();
-  render();
-}
-
-function removeItem(i) {
-  data.splice(i, 1);
-  save();
-  render();
-}
-
 function render() {
-  let list = document.getElementById("list");
+  const list = document.getElementById("list");
 
-  // 並び替え
-  let sorted = data
-    .map((item, i) => ({...item, i}))
-    .sort((a, b) => {
-      if (a.done !== b.done) return a.done - b.done;
+  // エリア順 → 店名順
+  data.sort((a, b) => {
+    if (a.area !== b.area) {
       return a.area.localeCompare(b.area, 'ja');
-    });
+    }
+    return a.name.localeCompare(b.name, 'ja');
+  });
 
   list.innerHTML = "";
 
-  sorted.forEach(item => {
-    let div = document.createElement("div");
-    div.className = "card " + (item.done ? "done" : "");
+  let currentArea = "";
+
+  data.forEach(d => {
+
+    // エリア見出し
+    if (d.area !== currentArea) {
+      currentArea = d.area;
+      const h = document.createElement("h3");
+      h.textContent = currentArea;
+      list.appendChild(h);
+    }
+
+    const div = document.createElement("div");
+    div.className = "card";
 
     div.innerHTML = `
-      <b>${item.name}</b><br>
-      📍 ${item.area}<br>
-      <a class="link" href="${item.url}" target="_blank">投稿を見る</a><br>
-      📝 ${item.memo}<br>
-      <div class="actions">
-        <button onclick="toggle(${item.i})">行った！</button>
-        <button onclick="removeItem(${item.i})">削除</button>
-      </div>
+      <b>${d.name}</b><br>
+      <a href="${d.map}" target="_blank">地図で見る</a>
     `;
 
     list.appendChild(div);
   });
 }
-
-render();
-</script>
-
-</body>
-</html>
