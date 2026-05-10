@@ -1,16 +1,13 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>グルメ共有</title>
 
 <style>
-body { font-family: sans-serif; background:#f5f8fa; padding:10px;}
-h1 { text-align:center; color:#1DA1F2;}
-input, select { width:100%; padding:12px; margin:5px 0;}
-button { padding:10px; margin:5px 5px 0 0;}
-.card { background:white; margin:10px 0; padding:12px; border-radius:10px;}
+body { font-family:sans-serif; background:#f5f8fa; padding:10px;}
+.card { background:white; margin:10px 0; padding:10px;}
 .done { opacity:0.5; }
 </style>
 </head>
@@ -19,152 +16,94 @@ button { padding:10px; margin:5px 5px 0 0;}
 
 <h1>グルメ共有</h1>
 
-<select id="areaFilter" onchange="render()">
-  <option value="">すべてのエリア</option>
-</select>
-
-<select id="genreFilter" onchange="render()">
-  <option value="">すべてのジャンル</option>
-  <option>和食</option>
-  <option>洋食</option>
-  <option>中華</option>
-  <option>スイーツ</option>
-  <option>その他</option>
-</select>
-
-<hr>
-
 <input id="name" placeholder="店名">
 <input id="area" placeholder="エリア">
 
 <select id="genre">
-  <option value="">ジャンル</option>
-  <option>和食</option>
-  <option>洋食</option>
-  <option>中華</option>
-  <option>スイーツ</option>
-  <option>その他</option>
+<option>和食</option>
+<option>洋食</option>
+<option>中華</option>
+<option>スイーツ</option>
+<option>その他</option>
 </select>
 
-<input id="map" placeholder="GoogleマップURL">
+<input id="map" placeholder="URL">
 <button onclick="add()">追加</button>
-
-<hr>
 
 <div id="list"></div>
 
-<!-- Firebase SDK -->
-<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js"></script>
-
 <script>
 
-// ★ここにあとでFirebase設定を入れる
+let data = JSON.parse(localStorage.getItem("gmap") || "[]");
 
-let db;
-let data = [];
-
-// 初期化後に呼ぶ
-function startApp(database) {
-  db = database;
-
-  // リアルタイム取得
-  db.collection("shops").onSnapshot(snapshot => {
-    data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    updateFilters();
-    render();
-  });
+function save() {
+  localStorage.setItem("gmap", JSON.stringify(data));
 }
 
-// 追加
 function add() {
-  if (!name.value || !map.value) return;
-
-  db.collection("shops").add({
+  data.push({
+    id: Date.now(),
     name: name.value,
     area: area.value,
     genre: genre.value,
     map: map.value,
-    done: false
+    done:false
   });
 
-  name.value = "";
-  area.value = "";
-  genre.value = "";
-  map.value = "";
+  save();
+  render();
 }
 
-// 行ったチェック
-function toggleDone(id, current) {
-  db.collection("shops").doc(id).update({
-    done: !current
-  });
+function toggleDone(id) {
+  const item = data.find(d => d.id === id);
+  item.done = !item.done;
+  save();
+  render();
 }
 
-// 編集
 function editItem(id) {
   const item = data.find(d => d.id === id);
 
-  const n = prompt("店名", item.name);
-  const a = prompt("エリア", item.area);
-  const g = prompt("ジャンル", item.genre);
-  const m = prompt("URL", item.map);
+  item.name = prompt("店名", item.name);
+  item.area = prompt("エリア", item.area);
+  item.genre = prompt("ジャンル", item.genre);
+  item.map = prompt("URL", item.map);
 
-  db.collection("shops").doc(id).update({
-    name: n,
-    area: a,
-    genre: g,
-    map: m
-  });
+  save();
+  render();
 }
 
-// 削除
 function deleteItem(id) {
-  if (!confirm("削除しますか？")) return;
-  db.collection("shops").doc(id).delete();
+  data = data.filter(d => d.id !== id);
+  save();
+  render();
 }
 
-// フィルター生成
-function updateFilters() {
-  const set = new Set(data.map(d => d.area).filter(Boolean));
-  areaFilter.innerHTML = '<option value="">すべて</option>';
-
-  Array.from(set).sort().forEach(a => {
-    areaFilter.innerHTML += `<option>${a}</option>`;
-  });
-}
-
-// 表示
 function render() {
-  const areaF = areaFilter.value;
-  const genreF = genreFilter.value;
 
-  let filtered = data.filter(d =>
-    (!areaF || d.area === areaF) &&
-    (!genreF || d.genre === genreF)
-  );
-
-  filtered.sort((a,b)=>a.area.localeCompare(b.area,'ja'));
+  let sorted = [...data].sort((a,b)=>a.area.localeCompare(b.area,'ja'));
 
   list.innerHTML = "";
 
-  filtered.forEach(d => {
+  sorted.forEach(d=>{
     list.innerHTML += `
       <div class="card ${d.done ? 'done':''}">
         <b>${d.name}</b><br>
         ${d.area} / ${d.genre}<br>
-        <a href="${d.map}" target="_blank">地図</a><br><br>
+        <a href="${d.map}" target="_blank">地図</a><br>
 
-        <button onclick="toggleDone('${d.id}', ${d.done})">
+        <button onclick="toggleDone(${d.id})">
           ${d.done ? '行った✓' : '行く'}
         </button>
 
-        <button onclick="editItem('${d.id}')">編集</button>
-        <button onclick="deleteItem('${d.id}')">削除</button>
+        <button onclick="editItem(${d.id})">編集</button>
+        <button onclick="deleteItem(${d.id})">削除</button>
       </div>
     `;
   });
 }
+
+render();
 
 </script>
 
