@@ -28,6 +28,7 @@ input {
 button {
   width: 100%;
   padding: 14px;
+  margin-top: 5px;
   background: #1DA1F2;
   color: white;
   border: none;
@@ -46,6 +47,11 @@ button {
   font-size: 12px;
   color: gray;
 }
+
+h3 {
+  margin-top: 20px;
+  color: #333;
+}
 </style>
 </head>
 
@@ -53,15 +59,17 @@ button {
 
 <h1>グルメ共有</h1>
 
-<!-- 入力フォーム -->
+<!-- 入力 -->
 <input id="name" placeholder="店名">
-<input id="area" placeholder="エリア">
+<input id="area" placeholder="エリア（例：渋谷）">
 <input id="map" placeholder="GoogleマップURL">
+
+<button onclick="openMap()">地図で確認</button>
 <button onclick="add()">追加</button>
 
 <hr>
 
-<!-- 表示 -->
+<!-- 一覧 -->
 <div id="list"></div>
 
 <script>
@@ -70,6 +78,12 @@ let data = JSON.parse(localStorage.getItem("gmap") || "[]");
 
 function save() {
   localStorage.setItem("gmap", JSON.stringify(data));
+}
+
+function openMap() {
+  const url = document.getElementById("map").value;
+  if (!url) return;
+  window.open(url, "_blank");
 }
 
 function add() {
@@ -93,6 +107,7 @@ function add() {
 function render() {
   const list = document.getElementById("list");
 
+  // エリア → 店名でソート
   data.sort((a, b) => {
     if (a.area !== b.area) {
       return a.area.localeCompare(b.area, 'ja');
@@ -105,10 +120,13 @@ function render() {
   let currentArea = "";
 
   data.forEach(d => {
+
+    // エリア見出し
     if (d.area !== currentArea) {
       currentArea = d.area;
+
       const h = document.createElement("h3");
-      h.textContent = currentArea;
+      h.textContent = currentArea || "未設定";
       list.appendChild(h);
     }
 
@@ -117,7 +135,7 @@ function render() {
 
     div.innerHTML = `
       <b>${d.name}</b><br>
-      <span class="area">${d.area}</span><br>
+      <span class="area">${d.area || "未設定"}</span><br>
       <a href="${d.map}" target="_blank">地図で見る</a>
     `;
 
